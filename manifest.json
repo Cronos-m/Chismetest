@@ -1,0 +1,21 @@
+{
+  "short_name": "Hermes",
+  "name": "Hermes - shh",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#121212",
+  "theme_color": "#1f1f1f",
+  "display": "standalone",
+  "orientation": "portrait"
+}
