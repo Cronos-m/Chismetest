@@ -4,15 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#000000">
+  
+  <!-- FAVICON Y PWA ICON -->
+  <link rel="icon" href="icon.png" type="image/png">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="manifest.json">
+  
   <title>Hermes - Control y Susurro</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
     body { background-color: #000; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
     
     /* MENÚ PRINCIPAL */
-    #main-menu { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 360px; padding: 20px; }
-    .app-title { font-size: 2.5rem; font-weight: 800; text-align: center; margin-bottom: 20px; letter-spacing: 2px; }
-    .btn { padding: 18px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+    #main-menu { display: flex; flex-direction: column; gap: 20px; width: 90%; max-width: 400px; padding: 20px; text-align: center; }
+    .app-logo { width: 120px; height: 120px; margin: 0 auto; object-fit: contain; border-radius: 25px; box-shadow: 0 4px 15px rgba(255,255,255,0.1); }
+    .app-title { font-size: 2.5rem; font-weight: 800; text-align: center; margin-bottom: 10px; letter-spacing: 2px; }
+    .btn { padding: 18px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: transform 0.1s; }
+    .btn:active { transform: scale(0.98); }
     .btn-primary { background: #fff; color: #000; }
     .btn-secondary { background: #1a1a1a; color: #fff; border: 1px solid #333; }
     
@@ -21,34 +29,36 @@
     #whisper-screen.active { display: flex; }
     
     /* FRASE EN VIVO */
-    .live-phrase { font-size: 2.5rem; font-weight: 900; color: #fff; text-transform: uppercase; text-align: center; min-height: 90px; letter-spacing: 1px; line-height: 1.1; display: flex; align-items: center; justify-content: center; }
+    .live-phrase { font-size: clamp(2rem, 5vw, 3rem); font-weight: 900; color: #fff; text-transform: uppercase; text-align: center; min-height: 100px; letter-spacing: 1px; line-height: 1.2; display: flex; align-items: center; justify-content: center; width: 100%; max-width: 800px; }
     .status-indicator { font-size: 1rem; color: #555; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 4px; }
     
     /* LISTA DE FRASES */
-    .words-container { margin-top: 20px; width: 100%; max-width: 340px; max-height: 45vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-    .word-item { font-size: 1.4rem; color: #ccc; border-bottom: 1px solid #222; padding-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; }
-    .word-num { color: #fff; font-weight: 900; min-width: 35px; }
-    .word-text { flex: 1; text-transform: uppercase; line-height: 1.2; }
+    .words-container { margin-top: 20px; width: 100%; max-width: 600px; max-height: 50vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .word-item { font-size: clamp(1.2rem, 3vw, 1.5rem); color: #ccc; border-bottom: 1px solid #222; padding-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; }
+    .word-num { color: #fff; font-weight: 900; min-width: 40px; }
+    .word-text { flex: 1; text-transform: uppercase; line-height: 1.3; }
     
     /* CONTROLES FLOTANTES */
-    .controls { position: absolute; bottom: 30px; display: flex; gap: 10px; background: #111; padding: 12px 20px; border-radius: 40px; border: 1px solid #333; }
-    .ctrl-btn { background: none; border: none; color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer; padding: 5px 10px; }
+    .controls { position: absolute; bottom: 30px; display: flex; gap: 15px; background: #111; padding: 12px 25px; border-radius: 40px; border: 1px solid #333; flex-wrap: wrap; justify-content: center; }
+    .ctrl-btn { background: none; border: none; color: #fff; font-size: clamp(0.8rem, 2vw, 1rem); font-weight: 600; cursor: pointer; padding: 8px 12px; }
     .ctrl-btn.active-btn { color: #4ade80; }
     .ctrl-btn.paused-btn { color: #f87171; }
     
     /* PANTALLA GUARDADOS */
-    #saved-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; display: none; flex-direction: column; padding: 30px 20px; z-index: 20; }
+    #saved-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; display: none; flex-direction: column; align-items: center; padding: 30px 20px; z-index: 20; }
     #saved-screen.active { display: flex; }
+    .saved-container { width: 100%; max-width: 600px; display: flex; flex-direction: column; height: 100%; }
     .saved-list { margin-top: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; flex-grow: 1; margin-bottom: 20px; }
-    .saved-card { background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; }
-    .saved-date { color: #888; font-size: 0.8rem; margin-bottom: 8px; }
-    .saved-phrase-item { color: #ccc; margin-bottom: 4px; text-transform: uppercase; font-size: 1.1rem; }
+    .saved-card { background: #111; padding: 20px; border-radius: 12px; border: 1px solid #333; }
+    .saved-date { color: #888; font-size: 0.9rem; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 5px; }
+    .saved-phrase-item { color: #ccc; margin-bottom: 6px; text-transform: uppercase; font-size: 1.1rem; }
   </style>
 </head>
 <body>
 
   <!-- MENÚ -->
   <div id="main-menu">
+    <img src="icon.png" alt="Hermes Logo" class="app-logo">
     <h1 class="app-title">HERMES</h1>
     <button class="btn btn-primary" onclick="startWhisper()">VER SUSURRO</button>
     <button class="btn btn-secondary" onclick="showSaved()">LISTAS GUARDADAS</button>
@@ -69,9 +79,11 @@
 
   <!-- GUARDADOS -->
   <div id="saved-screen">
-    <h2 style="font-size: 1.5rem; text-align: center;">HISTORIAL</h2>
-    <div class="saved-list" id="saved-list-container"></div>
-    <button class="btn btn-secondary" onclick="hideSaved()">VOLVER AL MENÚ</button>
+    <div class="saved-container">
+      <h2 style="font-size: 1.8rem; text-align: center;">HISTORIAL</h2>
+      <div class="saved-list" id="saved-list-container"></div>
+      <button class="btn btn-secondary" style="width: 100%;" onclick="hideSaved()">VOLVER AL MENÚ</button>
+    </div>
   </div>
 
   <script>
@@ -89,7 +101,7 @@
     function initSpeech() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
-        alert("Tu navegador no soporta reconocimiento de voz.");
+        alert("Tu navegador no soporta reconocimiento de voz. Usa Chrome, Edge o Safari.");
         return;
       }
 
@@ -113,7 +125,6 @@
           }
         }
 
-        // Mostrar la frase mientras se va armando (en tiempo real)
         let displayPhrase = (finalText || interimText).trim().toUpperCase();
         
         if (displayPhrase && displayPhrase !== lastDisplayedText) {
@@ -121,7 +132,6 @@
           lastDisplayedText = displayPhrase;
         }
 
-        // Cuando el motor detecta la pausa final, lo baja a la lista numerada
         if (finalText) {
           let cleanFinal = finalText.trim().toUpperCase();
           if (cleanFinal) {
@@ -133,7 +143,7 @@
       };
 
       recognition.onend = () => {
-        if (!isPaused) recognition.start(); // Reconecta automáticamente
+        if (!isPaused) recognition.start();
       };
     }
 
@@ -144,14 +154,9 @@
       
       const item = document.createElement('div');
       item.className = 'word-item';
+      item.innerHTML = `<span class="word-num">${phraseCount}.</span><span class="word-text">${phrase}</span>`;
       
-      // Estructura clara para asegurar la numeración
-      item.innerHTML = `
-        <span class="word-num">${phraseCount}.</span>
-        <span class="word-text">${phrase}</span>
-      `;
-      
-      wordsListEl.prepend(item); // Se añade arriba para no tener que bajar la pantalla
+      wordsListEl.prepend(item);
     }
 
     function startWhisper() {
@@ -221,10 +226,8 @@
         history.slice().reverse().forEach(session => {
           const card = document.createElement('div');
           card.className = 'saved-card';
-          
           let phrasesHTML = session.phrases.map((p, i) => `<div class="saved-phrase-item">${i + 1}. ${p}</div>`).join('');
           card.innerHTML = `<div class="saved-date">${session.date}</div><div>${phrasesHTML}</div>`;
-          
           container.appendChild(card);
         });
       }
