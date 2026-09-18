@@ -1,7 +1,7 @@
-// Definicion de la clave y version de la cache estatica
-const CACHE_NAME = 'hermes-v1';
+// Clave y version de cache estatica
+const CACHE_NAME = 'hermes-v2';
 
-// Recursos esenciales que se deben almacenar para el funcionamiento offline
+// Lista de archivos necesarios para el funcionamiento offline
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -9,7 +9,7 @@ const ASSETS_TO_CACHE = [
   './manifest.json'
 ];
 
-// Evento de instalacion: abre la cache y guarda todos los archivos estaticos
+// Evento de instalacion: guarda recursos en cache
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -20,7 +20,7 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Evento de activacion: limpia versiones antiguas de cache si existieran
+// Evento de activacion: depura versiones antiguas de cache
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -37,7 +37,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Evento fetch: estrategia Cache First con caida a Red
+// Intercepcion de peticiones de red
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {

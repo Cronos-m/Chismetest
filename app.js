@@ -1,13 +1,13 @@
-// Registrador del Service Worker para funcionalidad PWA Offline
+// Registro de Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then((reg) => console.log('Service Worker registrado correctamente.', reg))
-      .catch((err) => console.error('Error al registrar Service Worker:', err));
+      .then((reg) => console.log('Service Worker activo:', reg.scope))
+      .catch((err) => console.error('Error Service Worker:', err));
   });
 }
 
-// Globales del Estado de la Aplicacion
+// Variables globales de la aplicacion
 let db = null;
 let audioContext = null;
 let mediaRecorder = null;
@@ -15,14 +15,27 @@ let speechRecognition = null;
 let audioChunks = [];
 let currentTranscript = '';
 let isRecording = false;
+let isWhisperMode = false;
+let lastAudioUrl = null;
+let lastAudioRecord = null;
+let wordCount = 0;
 
-// Elementos de la Interfaz de Usuario
+// Referencias del DOM
 const btnStart = document.getElementById('btn-start');
 const btnStop = document.getElementById('btn-stop');
+const btnPlayLast = document.getElementById('btn-play-last');
+const btnStartWhisper = document.getElementById('btn-start-whisper');
 const liveTranscript = document.getElementById('live-transcript');
+const mainAudioPlayer = document.getElementById('main-audio-player');
+const lastAudioTime = document.getElementById('last-audio-time');
 const recordingsList = document.getElementById('recordings-list');
 
-// CONFIGURACION DE INDEXEDDB (Base de Datos Local)
+const whisperScreen = document.getElementById('whisper-screen');
+const currentWordEl = document.getElementById('current-word');
+const wordsListEl = document.getElementById('words-list');
+const loaderEl = document.getElementById('loader');
+
+// CONFIGURACION DE INDEXEDDB
 const DB_NAME = 'HermesAudioDB';
 const DB_VERSION = 1;
 const STORE_NAME = 'recordings';
@@ -31,19 +44,14 @@ function initDB() {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-    request.onerror = (event) => {
-      console.error('Error al abrir IndexedDB:', event.target.error);
-      reject(event.target.error);
-    };
-
-    request.onsuccess = (event) => {
-      db = event.target.result;
+    request.onerror = (e) => reject(e.target.error);
+    request.onsuccess = (e) => {
+      db = e.target.result;
       resolve(db);
     };
 
-    // Creacion de la estructura del almacen de datos en la primera ejecucion
-    request.onupgradeneeded = (event) => {
-      const database = event.target.result;
+    request.onupgradeneeded = (e) => {
+      const database = e.target.result;
       if (!database.objectStoreNames.contains(STORE_NAME)) {
         database.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
       }
@@ -51,52 +59,101 @@ function initDB() {
   });
 }
 
-// INICIALIZACION DE RECONOCIMIENTO DE VOZ (SpeechRecognition API)
+// CONFIGURACION DE MEDIA SESSION API (Control Bluetooth / Auriculares)
+function setupMediaSession(title, transcript) {
+  if ('mediaSession' in navigator) {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title || 'Ultima Grabacion',
+      artist: 'Hermes Audio',
+      album: transcript || 'Audio Amplificado'
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => {
+      if (mainAudioPlayer.src) {
+        mainAudioPlayer.play();
+      }
+    });
+
+    navigator.mediaSession.setActionHandler('pause', () => {
+      if (mainAudioPlayer.src) {
+        mainAudioPlayer.pause();
+      }
+    });
+  }
+}
+
+// ACTIVACION COMPATIBLE DE AUDIO CONTEXT PARA IOS (Safari)
+async function ensureAudioContextActive() {
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+
+  if (!audioContext) {
+    audioContext = new AudioCtx();
+  }
+
+  if (audioContext.state === 'suspended') {
+    await audioContext.resume();
+  }
+  return audioContext;
+}
+
+// INICIALIZACION DEL RECONOCIMIENTO DE VOZ
 function initSpeechRecognition() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  
   if (!SpeechRecognition) {
-    liveTranscript.textContent = 'SpeechRecognition no es soportado en este navegador.';
+    liveTranscript.textContent = 'SpeechRecognition no esta soportado en este navegador.';
     return null;
   }
 
-  const recognition = new SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'es-ES';
+  const rec = new SpeechRecognition();
+  rec.continuous = true;
+  rec.interimResults = true;
+  rec.lang = 'es-ES';
 
-  recognition.onresult = (event) => {
-    let interimTranscript = '';
-    let finalTranscript = '';
+  rec.onresult = (event) => {
+    let interimText = '';
+    let finalText = '';
 
     for (let i = event.resultIndex; i < event.results.length; ++i) {
       if (event.results[i].isFinal) {
-        finalTranscript += event.results[i][0].transcript;
+        finalText += event.results[i][0].transcript;
       } else {
-        interimTranscript += event.results[i][0].transcript;
+        interimText += event.results[i][0].transcript;
       }
     }
 
-    currentTranscript += finalTranscript;
-    liveTranscript.textContent = currentTranscript + interimTranscript;
+    if (isWhisperMode) {
+      if (interimText.trim().length > 0) {
+        loaderEl.style.display = 'none';
+        currentWordEl.textContent = interimText.trim().toUpperCase();
+      }
+      if (finalText.trim().length > 0) {
+        addWordToWhisperList(finalText.trim().toUpperCase());
+      }
+    } else {
+      currentTranscript += finalText;
+      liveTranscript.textContent = currentTranscript + interimText;
+    }
   };
 
-  recognition.onerror = (event) => {
-    console.error('Error en reconocimiento de voz:', event.error);
+  rec.onerror = (e) => console.error('Error reconocimiento:', e.error);
+
+  rec.onend = () => {
+    if (isRecording || isWhisperMode) {
+      rec.start();
+    }
   };
 
-  return recognition;
+  return rec;
 }
 
-// LOGICA DE CAPTURA Y AMPLIFICACION DE AUDIO
-async function startRecording() {
+// CAPTURA DE AUDIO, AMPLIFICACION Y RETROALIMENTACION A AUDIFONOS
+async function startRecordingProcess() {
   try {
     audioChunks = [];
     currentTranscript = '';
-    liveTranscript.textContent = 'Escuchando...';
+    liveTranscript.textContent = 'Escuchando audio...';
 
-    // Se solicitan permisos desactivando el procesamiento automatico del navegador
-    // Esto permite que el GainNode amplifique la señal limpia sin cancelaciones destructivas
+    // Desactivar procesamiento automatico nativo para no atenuar susurros
     const constraints = {
       audio: {
         echoCancellation: false,
@@ -106,71 +163,61 @@ async function startRecording() {
     };
 
     const rawStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const ctx = await ensureAudioContextActive();
 
-    // Inicialización del Contexto de Audio
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    audioContext = new AudioContextClass();
+    const sourceNode = ctx.createMediaStreamSource(rawStream);
 
-    // Creacion del nodo de origen desde el stream del microfono
-    const sourceNode = audioContext.createMediaStreamSource(rawStream);
+    // GainNode con factor 15.0 para amplificar frecuencias bajas
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = 15.0;
 
-    // Creacion del nodo de ganancia para amplificacion de sonidos bajos
-    const gainNode = audioContext.createGain();
-    gainNode.gain.value = 15.0; // Factor de amplificacion x15
+    // Destino 1: Almacenamiento en Blob con MediaRecorder
+    const destNode = ctx.createMediaStreamDestination();
 
-    // Destino para enviar el flujo de audio amplificado
-    const destinationNode = audioContext.createMediaStreamDestination();
-
-    // Conexion de nodos del grafo de audio
+    // Conexiones de la red de audio
     sourceNode.connect(gainNode);
-    gainNode.connect(destinationNode);
+    gainNode.connect(destNode);
+
+    // Destino 2: Enviar señal amplificada directamente a la salida de audifonos
+    gainNode.connect(ctx.destination);
 
     /* 
-      LIMITACION TECNICA Y NOTA DE ARQUITECTURA:
-      La API nativa SpeechRecognition no permite seleccionar una fuente MediaStream personalizada 
-      (como el destino amplificado del Web Audio API). Se conecta automaticamente al dispositivo 
-      por defecto del sistema.
-      Por esta razon, la transcripcion procesa la entrada directa del sistema, mientras que la 
-      grabacion persistente (MediaRecorder) recibe el stream amplificado por el GainNode.
+      LIMITACION TECNICA DOCUMENTADA:
+      SpeechRecognition procesa la entrada nativa del dispositivo por limitaciones W3C,
+      mientras que MediaRecorder y la salida a audifonos procesan el flujo amplificado por Web Audio API.
     */
 
-    // Se inicializa el MediaRecorder con el stream amplificado
-    const amplifiedStream = destinationNode.stream;
-    
-    // Verificacion del tipo MIME soportado para navegadores (iOS / Android)
-    let mimeType = 'audio/webm';
-    if (!MediaRecorder.isTypeSupported('audio/webm')) {
-      if (MediaRecorder.isTypeSupported('audio/mp4')) {
-        mimeType = 'audio/mp4'; // Opcion comun para Safari iOS
-      } else {
-        mimeType = ''; // El navegador elegira el valor por defecto
-      }
+    // Deteccion de codec de audio soportado segun plataforma (iOS / Android)
+    let mimeType = '';
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      mimeType = 'audio/webm;codecs=opus';
+    } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+      mimeType = 'audio/webm';
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      mimeType = 'audio/mp4';
     }
 
-    mediaRecorder = mimeType ? new MediaRecorder(amplifiedStream, { mimeType }) : new MediaRecorder(amplifiedStream);
+    mediaRecorder = mimeType ? new MediaRecorder(destNode.stream, { mimeType }) : new MediaRecorder(destNode.stream);
 
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        audioChunks.push(event.data);
-      }
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) audioChunks.push(e.data);
     };
 
     mediaRecorder.onstop = async () => {
       const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/wav' });
       await saveRecording(audioBlob, currentTranscript);
-      
-      // Detener los tracks del microfono para liberar el hardware
+
       rawStream.getTracks().forEach(track => track.stop());
-      if (audioContext && audioContext.state !== 'closed') {
-        await audioContext.close();
-      }
-      
-      renderRecordings();
+
+      await loadLastRecording();
+      renderRecordingsList();
     };
 
-    // Iniciar grabacion de audio y transcripcion
     mediaRecorder.start();
-    
+
+    if (!speechRecognition) {
+      speechRecognition = initSpeechRecognition();
+    }
     if (speechRecognition) {
       speechRecognition.start();
     }
@@ -179,13 +226,13 @@ async function startRecording() {
     updateUIState();
 
   } catch (err) {
-    console.error('Error al acceder al microfono:', err);
-    alert('No se pudo acceder al microfono. Por favor, concede los permisos necesarios.');
+    alert('No se pudo acceder al microfono o iniciar el canal de audio.');
+    console.error(err);
   }
 }
 
-function stopRecording() {
-  if (!isRecording) return;
+function stopRecordingProcess() {
+  if (!isRecording && !isWhisperMode) return;
 
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
@@ -196,6 +243,7 @@ function stopRecording() {
   }
 
   isRecording = false;
+  isWhisperMode = false;
   updateUIState();
 }
 
@@ -213,122 +261,145 @@ function updateUIState() {
   }
 }
 
-// FUNCIONES OPERATIVAS CRUD EN INDEXEDDB
+// CARGA Y CONFIGURACION DEL ULTIMO AUDIO
+async function loadLastRecording() {
+  const recordings = await getAllRecordings();
+  if (recordings.length > 0) {
+    lastAudioRecord = recordings[recordings.length - 1];
 
+    if (lastAudioUrl) {
+      URL.revokeObjectURL(lastAudioUrl);
+    }
+
+    lastAudioUrl = URL.createObjectURL(lastAudioRecord.audioBlob);
+    mainAudioPlayer.src = lastAudioUrl;
+    lastAudioTime.textContent = lastAudioRecord.date;
+    btnPlayLast.disabled = false;
+
+    // Vincular metadatos con el control multimedia nativo
+    setupMediaSession(`Grabacion #${lastAudioRecord.id}`, lastAudioRecord.transcript);
+  }
+}
+
+btnPlayLast.addEventListener('click', () => {
+  if (mainAudioPlayer.src) {
+    mainAudioPlayer.play();
+  }
+});
+
+// LOGICA MODO SUSURRO EN PANTALLA
+function addWordToWhisperList(word) {
+  wordCount++;
+  currentWordEl.textContent = word;
+
+  setTimeout(() => {
+    const item = document.createElement('div');
+    item.className = 'word-item';
+    item.textContent = `${wordCount}) ${word}`;
+    wordsListEl.appendChild(item);
+
+    currentWordEl.textContent = '';
+    loaderEl.style.display = 'block';
+  }, 1000);
+}
+
+btnStartWhisper.addEventListener('click', () => {
+  isWhisperMode = true;
+  wordCount = 0;
+  wordsListEl.innerHTML = '';
+  currentWordEl.textContent = '';
+  loaderEl.style.display = 'block';
+  whisperScreen.classList.add('active');
+
+  startRecordingProcess();
+});
+
+whisperScreen.addEventListener('dblclick', () => {
+  stopRecordingProcess();
+  whisperScreen.classList.remove('active');
+});
+
+// BASE DE DATOS LOCAL (INDEXEDDB - CRUD)
 function saveRecording(blob, transcript) {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-
-    const record = {
+    const tx = db.transaction([STORE_NAME], 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const item = {
       audioBlob: blob,
-      transcript: transcript || 'Sin transcripcion disponible.',
-      date: new Date().toLocaleString()
+      transcript: transcript || 'Sin transcripción',
+      date: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
-
-    const request = store.add(record);
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = (e) => reject(e.target.error);
+    const req = store.add(item);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e.target.error);
   });
 }
 
 function getAllRecordings() {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readonly');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.getAll();
-
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = (e) => reject(e.target.error);
+    const tx = db.transaction([STORE_NAME], 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (e) => reject(e.target.error);
   });
 }
 
 function deleteRecording(id) {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const request = store.delete(id);
-
-    request.onsuccess = () => resolve();
-    request.onerror = (e) => reject(e.target.error);
+    const tx = db.transaction([STORE_NAME], 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = (e) => reject(e.target.error);
   });
 }
 
-function updateRecordingTranscript(id, newTranscript) {
+function updateTranscript(id, text) {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction([STORE_NAME], 'readwrite');
-    const store = transaction.objectStore(STORE_NAME);
-    const getRequest = store.get(id);
-
-    getRequest.onsuccess = () => {
-      const data = getRequest.result;
+    const tx = db.transaction([STORE_NAME], 'readwrite');
+    const store = tx.objectStore(STORE_NAME);
+    const getReq = store.get(id);
+    getReq.onsuccess = () => {
+      const data = getReq.result;
       if (data) {
-        data.transcript = newTranscript;
-        const updateRequest = store.put(data);
-        updateRequest.onsuccess = () => resolve();
-        updateRequest.onerror = (e) => reject(e.target.error);
-      } else {
-        reject('Registro no encontrado.');
+        data.transcript = text;
+        store.put(data).onsuccess = () => resolve();
       }
     };
-    getRequest.onerror = (e) => reject(e.target.error);
   });
 }
 
-// RENDERIZADO DE INTERFAZ Y REPRODUCCION
-async function renderRecordings() {
+async function renderRecordingsList() {
   recordingsList.innerHTML = '';
   const recordings = await getAllRecordings();
 
   if (recordings.length === 0) {
-    recordingsList.innerHTML = '<p style="color: #666; text-align: center;">No hay grabaciones guardadas.</p>';
+    recordingsList.innerHTML = '<p style="color: #444; text-align: center; font-size: 0.85rem;">No hay audios registrados.</p>';
     return;
   }
 
-  // Se ordenan las grabaciones en orden descendente (mas recientes primero)
   recordings.reverse().forEach((item) => {
-    const itemDiv = document.createElement('div');
-    itemDiv.className = 'recording-item';
+    const div = document.createElement('div');
+    div.className = 'recording-item';
+    const url = URL.createObjectURL(item.audioBlob);
 
-    // Generacion de URL temporal para el control <audio> nativo del navegador
-    const audioUrl = URL.createObjectURL(item.audioBlob);
-
-    itemDiv.innerHTML = `
-      <div class="recording-header">
-        <span>ID: ${item.id}</span>
+    div.innerHTML = `
+      <div class="item-header">
+        <span>Audio #${item.id}</span>
         <span>${item.date}</span>
       </div>
-      <div class="recording-transcript" id="transcript-text-${item.id}">${escapeHTML(item.transcript)}</div>
-      <audio controls src="${audioUrl}"></audio>
+      <div class="item-transcript" id="txt-${item.id}">${escapeHTML(item.transcript)}</div>
+      <audio controls src="${url}"></audio>
       <div class="item-actions">
-        <button class="btn-edit" onclick="editTranscript(${item.id})">Editar Texto</button>
-        <button class="btn-delete" onclick="removeRecord(${item.id})">Eliminar</button>
+        <button class="btn-secondary btn-sm" onclick="editItem(${item.id})">Editar</button>
+        <button class="btn-danger btn-sm" onclick="deleteItem(${item.id})">Eliminar</button>
       </div>
     `;
 
-    recordingsList.appendChild(itemDiv);
+    recordingsList.appendChild(div);
   });
 }
-
-// Manejadores globales para los botones dentro del listado dinámico
-window.removeRecord = async function(id) {
-  if (confirm('¿Desea eliminar esta grabacion?')) {
-    await deleteRecording(id);
-    renderRecordings();
-  }
-};
-
-window.editTranscript = async function(id) {
-  const textElement = document.getElementById(`transcript-text-${id}`);
-  const currentText = textElement.textContent;
-  const newText = prompt('Modificar transcripcion:', currentText);
-
-  if (newText !== null && newText.trim() !== '') {
-    await updateRecordingTranscript(id, newText.trim());
-    renderRecordings();
-  }
-};
 
 function escapeHTML(str) {
   return str.replace(/[&<>'"]/g, 
@@ -336,13 +407,29 @@ function escapeHTML(str) {
   );
 }
 
-// INICIALIZACION DE LA APLICACION
+window.deleteItem = async function(id) {
+  if (confirm('¿Eliminar registro de audio?')) {
+    await deleteRecording(id);
+    await loadLastRecording();
+    renderRecordingsList();
+  }
+};
+
+window.editItem = async function(id) {
+  const current = document.getElementById(`txt-${id}`).textContent;
+  const val = prompt('Modificar transcripcion:', current);
+  if (val && val.trim() !== '') {
+    await updateTranscript(id, val.trim());
+    renderRecordingsList();
+  }
+};
+
+// INICIALIZACION
 window.addEventListener('DOMContentLoaded', async () => {
   await initDB();
-  speechRecognition = initSpeechRecognition();
+  await loadLastRecording();
+  renderRecordingsList();
 
-  btnStart.addEventListener('click', startRecording);
-  btnStop.addEventListener('click', stopRecording);
-
-  renderRecordings();
+  btnStart.addEventListener('click', startRecordingProcess);
+  btnStop.addEventListener('click', stopRecordingProcess);
 });

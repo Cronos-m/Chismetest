@@ -3,198 +3,278 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#1f1f1f">
+  <meta name="theme-color" content="#0a0a0a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Hermes - Audio & Transcripcion</title>
+  <title>Hermes - Control Multimedia & Susurro</title>
   <link rel="manifest" href="manifest.json">
   <style>
-    /* Estilos globales y reset basico para Dark Mode */
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
-      background-color: #121212;
-      color: #e0e0e0;
+      background-color: #0a0a0a;
+      color: #f0f0f0;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-      padding: 20px;
+      padding: 20px 15px;
     }
 
     header {
       width: 100%;
-      max-width: 600px;
+      max-width: 500px;
       text-align: center;
-      padding-bottom: 20px;
-      border-bottom: 1px solid #2a2a2a;
+      padding-bottom: 15px;
       margin-bottom: 20px;
+      border-bottom: 1px solid #1f1f1f;
     }
 
     header h1 {
-      font-size: 1.8rem;
-      font-weight: 600;
-      letter-spacing: 1px;
+      font-size: 1.6rem;
+      font-weight: 700;
+      letter-spacing: 2px;
       color: #ffffff;
     }
 
     main {
       width: 100%;
-      max-width: 600px;
+      max-width: 500px;
       display: flex;
       flex-direction: column;
       gap: 20px;
     }
 
-    /* Modulo de Controles */
-    .controls-card {
-      background-color: #1e1e1e;
-      border-radius: 12px;
+    /* Modulo principal de controles */
+    .card {
+      background-color: #141414;
+      border: 1px solid #222222;
+      border-radius: 16px;
       padding: 20px;
       display: flex;
       flex-direction: column;
-      align-items: center;
       gap: 15px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
     }
 
-    .btn-group {
-      display: flex;
-      gap: 15px;
-      width: 100%;
+    .card-title {
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #888888;
+      margin-bottom: 5px;
+    }
+
+    .btn-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
 
     button {
-      flex: 1;
-      padding: 14px;
+      padding: 16px;
       border: none;
-      border-radius: 8px;
-      font-size: 1rem;
+      border-radius: 12px;
+      font-size: 0.95rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background-color 0.2s ease, opacity 0.2s ease;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
     }
 
     button:disabled {
-      opacity: 0.4;
+      opacity: 0.3;
       cursor: not-allowed;
     }
 
-    .btn-record {
-      background-color: #cf6679;
+    .btn-primary {
+      background-color: #ffffff;
       color: #000000;
     }
 
-    .btn-record.recording {
-      background-color: #ff1744;
+    .btn-secondary {
+      background-color: #222222;
+      color: #ffffff;
+      border: 1px solid #333333;
+    }
+
+    .btn-danger {
+      background-color: #3d1418;
+      color: #ff6b7b;
+      border: 1px solid #5a1e24;
+    }
+
+    .btn-danger.recording {
+      background-color: #ff3b30;
       color: #ffffff;
       animation: pulse 1.5s infinite;
     }
 
-    .btn-stop {
-      background-color: #03dac6;
-      color: #000000;
-    }
-
     @keyframes pulse {
       0% { opacity: 1; }
-      50% { opacity: 0.5; }
+      50% { opacity: 0.6; }
       100% { opacity: 1; }
     }
 
-    /* Caja de transcripcion en tiempo real */
-    .transcription-box {
-      width: 100%;
-      min-height: 100px;
-      max-height: 150px;
-      background-color: #121212;
-      border: 1px solid #333333;
-      border-radius: 8px;
-      padding: 12px;
-      overflow-y: auto;
-      font-size: 0.95rem;
-      line-height: 1.4;
-      color: #b0b0b0;
-    }
-
-    /* Listado CRUD de Grabaciones */
-    .list-container {
-      background-color: #1e1e1e;
+    /* Contenedor del ultimo audio para control multimedia */
+    .last-audio-box {
+      background-color: #1a1a1a;
+      border: 1px solid #2a2a2a;
       border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    }
-
-    .list-container h2 {
-      font-size: 1.2rem;
-      margin-bottom: 15px;
-      color: #ffffff;
-    }
-
-    .recordings-list {
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    .recording-item {
-      background-color: #252525;
-      border: 1px solid #333333;
-      border-radius: 8px;
       padding: 15px;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
 
-    .recording-header {
+    .last-audio-info {
       display: flex;
       justify-content: space-between;
-      align-items: center;
       font-size: 0.85rem;
-      color: #888888;
-    }
-
-    .recording-transcript {
-      font-size: 0.95rem;
-      color: #dddddd;
-      background-color: #1a1a1a;
-      padding: 8px;
-      border-radius: 4px;
-      border-left: 3px solid #03dac6;
+      color: #aaaaaa;
     }
 
     audio {
       width: 100%;
       height: 40px;
-      margin-top: 5px;
+      border-radius: 8px;
+    }
+
+    /* Caja de transcripcion en vivo */
+    .transcript-viewer {
+      width: 100%;
+      min-height: 80px;
+      max-height: 120px;
+      background-color: #0a0a0a;
+      border: 1px solid #222222;
+      border-radius: 10px;
+      padding: 12px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      color: #cccccc;
+      line-height: 1.4;
+    }
+
+    /* Listado CRUD */
+    .recordings-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .recording-item {
+      background-color: #141414;
+      border: 1px solid #222222;
+      border-radius: 12px;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #666666;
+    }
+
+    .item-transcript {
+      font-size: 0.9rem;
+      color: #e0e0e0;
+      background-color: #0a0a0a;
+      padding: 10px;
+      border-radius: 8px;
+      border-left: 3px solid #ffffff;
     }
 
     .item-actions {
       display: flex;
       justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .btn-sm {
+      padding: 8px 12px;
+      font-size: 0.8rem;
+      border-radius: 6px;
+    }
+
+    /* Pantalla Completa Modo Susurro */
+    #whisper-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background-color: #000000;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 9999;
+      padding: 20px;
+    }
+
+    #whisper-screen.active {
+      display: flex;
+    }
+
+    .status-loader {
+      font-size: 2rem;
+      letter-spacing: 6px;
+      color: #444444;
+      animation: blink 1.2s infinite;
+      margin-bottom: 20px;
+    }
+
+    @keyframes blink {
+      0% { opacity: 0.2; }
+      50% { opacity: 1; }
+      100% { opacity: 0.2; }
+    }
+
+    .current-word {
+      font-size: 2.5rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      text-align: center;
+      min-height: 70px;
+      color: #ffffff;
+    }
+
+    .words-list {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
       gap: 10px;
+      width: 100%;
+      max-width: 320px;
     }
 
-    .btn-delete {
-      background-color: #331518;
-      color: #cf6679;
-      border: 1px solid #cf6679;
-      padding: 6px 12px;
-      font-size: 0.85rem;
+    .word-item {
+      font-size: 1.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #ffffff;
     }
 
-    .btn-edit {
-      background-color: #12282a;
-      color: #03dac6;
-      border: 1px solid #03dac6;
-      padding: 6px 12px;
-      font-size: 0.85rem;
+    .exit-hint {
+      position: absolute;
+      bottom: 25px;
+      font-size: 0.75rem;
+      color: #333333;
     }
   </style>
 </head>
@@ -205,23 +285,43 @@
   </header>
 
   <main>
-    <section class="controls-card">
-      <div class="btn-group">
-        <button id="btn-start" class="btn-record">Grabar</button>
-        <button id="btn-stop" class="btn-stop" disabled>Detener</button>
+    <section class="card">
+      <div class="card-title">Grabacion y Control de Audio</div>
+      <div class="btn-grid">
+        <button id="btn-start" class="btn-danger">Grabar</button>
+        <button id="btn-stop" class="btn-secondary" disabled>Detener</button>
       </div>
-      <div id="live-transcript" class="transcription-box">
-        Transcripcion en tiempo real...
+
+      <div class="transcript-viewer" id="live-transcript">
+        Esperando inicio de audio...
       </div>
+
+      <div class="last-audio-box">
+        <div class="last-audio-info">
+          <span>Ultimo Audio Grabado</span>
+          <span id="last-audio-time">--:--</span>
+        </div>
+        <audio id="main-audio-player" controls></audio>
+        <button id="btn-play-last" class="btn-primary" disabled>Reproducir Ultimo Audio</button>
+      </div>
+
+      <button id="btn-start-whisper" class="btn-secondary">Activar Modo Susurro (Pantalla)</button>
     </section>
 
-    <section class="list-container">
-      <h2>Grabaciones Guardadas</h2>
+    <section class="card">
+      <div class="card-title">Historial Guardado</div>
       <div id="recordings-list" class="recordings-list">
-        <!-- Las grabaciones guardadas se renderizaran dinamicamente aqui -->
+        <!-- Renderizado dinámico -->
       </div>
     </section>
   </main>
+
+  <div id="whisper-screen">
+    <div class="status-loader" id="loader">...</div>
+    <div class="current-word" id="current-word"></div>
+    <div class="words-list" id="words-list"></div>
+    <div class="exit-hint">Doble toque en cualquier lugar para salir</div>
+  </div>
 
   <script src="app.js"></script>
 </body>

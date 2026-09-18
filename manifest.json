@@ -1,6 +1,6 @@
 {
   "short_name": "Hermes",
-  "name": "Hermes - shh",
+  "name": "Hermes - Audio & Susurro",
   "icons": [
     {
       "src": "icon-192.png",
@@ -14,8 +14,8 @@
     }
   ],
   "start_url": "./index.html",
-  "background_color": "#121212",
-  "theme_color": "#1f1f1f",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
   "display": "standalone",
   "orientation": "portrait"
 }
