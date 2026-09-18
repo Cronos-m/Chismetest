@@ -1,21 +1,21 @@
 {
+  "name": "Hermes",
   "short_name": "Hermes",
-  "name": "Hermes - Audio & Susurro",
+  "description": "PWA para capturar, amplificar, transcribir y reproducir audio de bajos decibeles.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#1e1e1e",
   "icons": [
     {
       "src": "icon-192.png",
-      "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "192x192",
+      "type": "image/png"
     },
     {
       "src": "icon-512.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "512x512",
+      "type": "image/png"
     }
-  ],
-  "start_url": "./index.html",
-  "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
-  "display": "standalone",
-  "orientation": "portrait"
+  ]
 }

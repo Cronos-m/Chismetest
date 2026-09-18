@@ -1,328 +1,77 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#0a0a0a">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <title>Hermes - Control Multimedia & Susurro</title>
-  <link rel="manifest" href="manifest.json">
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      background-color: #0a0a0a;
-      color: #f0f0f0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px 15px;
-    }
-
-    header {
-      width: 100%;
-      max-width: 500px;
-      text-align: center;
-      padding-bottom: 15px;
-      margin-bottom: 20px;
-      border-bottom: 1px solid #1f1f1f;
-    }
-
-    header h1 {
-      font-size: 1.6rem;
-      font-weight: 700;
-      letter-spacing: 2px;
-      color: #ffffff;
-    }
-
-    main {
-      width: 100%;
-      max-width: 500px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-    }
-
-    /* Modulo principal de controles */
-    .card {
-      background-color: #141414;
-      border: 1px solid #222222;
-      border-radius: 16px;
-      padding: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
-    }
-
-    .card-title {
-      font-size: 0.9rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #888888;
-      margin-bottom: 5px;
-    }
-
-    .btn-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    button {
-      padding: 16px;
-      border: none;
-      border-radius: 12px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
-
-    button:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background-color: #ffffff;
-      color: #000000;
-    }
-
-    .btn-secondary {
-      background-color: #222222;
-      color: #ffffff;
-      border: 1px solid #333333;
-    }
-
-    .btn-danger {
-      background-color: #3d1418;
-      color: #ff6b7b;
-      border: 1px solid #5a1e24;
-    }
-
-    .btn-danger.recording {
-      background-color: #ff3b30;
-      color: #ffffff;
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.6; }
-      100% { opacity: 1; }
-    }
-
-    /* Contenedor del ultimo audio para control multimedia */
-    .last-audio-box {
-      background-color: #1a1a1a;
-      border: 1px solid #2a2a2a;
-      border-radius: 12px;
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .last-audio-info {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.85rem;
-      color: #aaaaaa;
-    }
-
-    audio {
-      width: 100%;
-      height: 40px;
-      border-radius: 8px;
-    }
-
-    /* Caja de transcripcion en vivo */
-    .transcript-viewer {
-      width: 100%;
-      min-height: 80px;
-      max-height: 120px;
-      background-color: #0a0a0a;
-      border: 1px solid #222222;
-      border-radius: 10px;
-      padding: 12px;
-      overflow-y: auto;
-      font-size: 0.9rem;
-      color: #cccccc;
-      line-height: 1.4;
-    }
-
-    /* Listado CRUD */
-    .recordings-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .recording-item {
-      background-color: #141414;
-      border: 1px solid #222222;
-      border-radius: 12px;
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .item-header {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.8rem;
-      color: #666666;
-    }
-
-    .item-transcript {
-      font-size: 0.9rem;
-      color: #e0e0e0;
-      background-color: #0a0a0a;
-      padding: 10px;
-      border-radius: 8px;
-      border-left: 3px solid #ffffff;
-    }
-
-    .item-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-    }
-
-    .btn-sm {
-      padding: 8px 12px;
-      font-size: 0.8rem;
-      border-radius: 6px;
-    }
-
-    /* Pantalla Completa Modo Susurro */
-    #whisper-screen {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background-color: #000000;
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 9999;
-      padding: 20px;
-    }
-
-    #whisper-screen.active {
-      display: flex;
-    }
-
-    .status-loader {
-      font-size: 2rem;
-      letter-spacing: 6px;
-      color: #444444;
-      animation: blink 1.2s infinite;
-      margin-bottom: 20px;
-    }
-
-    @keyframes blink {
-      0% { opacity: 0.2; }
-      50% { opacity: 1; }
-      100% { opacity: 0.2; }
-    }
-
-    .current-word {
-      font-size: 2.5rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      text-align: center;
-      min-height: 70px;
-      color: #ffffff;
-    }
-
-    .words-list {
-      margin-top: 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      width: 100%;
-      max-width: 320px;
-    }
-
-    .word-item {
-      font-size: 1.6rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #ffffff;
-    }
-
-    .exit-hint {
-      position: absolute;
-      bottom: 25px;
-      font-size: 0.75rem;
-      color: #333333;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hermes - Transcriptor de Audio</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e1e1e">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: #e0e0e0;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 { text-align: center; }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #bb86fc;
+            color: #121212;
+            font-weight: bold;
+        }
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        #transcription {
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 100px;
+            border: 1px solid #333;
+            margin-bottom: 20px;
+            white-space: pre-wrap;
+        }
+        audio {
+            width: 100%;
+            margin-top: 10px;
+        }
+        .status {
+            text-align: center;
+            color: #03dac6;
+            margin-bottom: 15px;
+        }
+    </style>
 </head>
 <body>
+    <h1>Hermes</h1>
+    
+    <p class="status" id="status">Sistema listo. Presiona Iniciar.</p>
+    
+    <div class="controls">
+        <button id="btnStart">Iniciar Grabación</button>
+        <button id="btnStop" disabled>Detener Grabación</button>
+    </div>
 
-  <header>
-    <h1>HERMES</h1>
-  </header>
+    <h3>Transcripción en tiempo real:</h3>
+    <div id="transcription">El texto transcrito aparecerá aquí...</div>
 
-  <main>
-    <section class="card">
-      <div class="card-title">Grabacion y Control de Audio</div>
-      <div class="btn-grid">
-        <button id="btn-start" class="btn-danger">Grabar</button>
-        <button id="btn-stop" class="btn-secondary" disabled>Detener</button>
-      </div>
+    <h3>Reproducción de audio amplificado:</h3>
+    <audio id="audioPlayback" controls></audio>
 
-      <div class="transcript-viewer" id="live-transcript">
-        Esperando inicio de audio...
-      </div>
-
-      <div class="last-audio-box">
-        <div class="last-audio-info">
-          <span>Ultimo Audio Grabado</span>
-          <span id="last-audio-time">--:--</span>
-        </div>
-        <audio id="main-audio-player" controls></audio>
-        <button id="btn-play-last" class="btn-primary" disabled>Reproducir Ultimo Audio</button>
-      </div>
-
-      <button id="btn-start-whisper" class="btn-secondary">Activar Modo Susurro (Pantalla)</button>
-    </section>
-
-    <section class="card">
-      <div class="card-title">Historial Guardado</div>
-      <div id="recordings-list" class="recordings-list">
-        <!-- Renderizado dinámico -->
-      </div>
-    </section>
-  </main>
-
-  <div id="whisper-screen">
-    <div class="status-loader" id="loader">...</div>
-    <div class="current-word" id="current-word"></div>
-    <div class="words-list" id="words-list"></div>
-    <div class="exit-hint">Doble toque en cualquier lugar para salir</div>
-  </div>
-
-  <script src="app.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
