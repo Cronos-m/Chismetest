@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#000000">
   
-  <!-- FAVICON Y PWA ICON -->
+  <!-- FAVICON Y PWA MANIFEST -->
   <link rel="icon" href="icon.png" type="image/png">
   <link rel="apple-touch-icon" href="icon.png">
   <link rel="manifest" href="manifest.json">
@@ -87,6 +87,16 @@
   </div>
 
   <script>
+    // --- REGISTRO DEL SERVICE WORKER (PWA) ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then(reg => console.log('Service Worker registrado correctamente'))
+          .catch(err => console.log('Error al registrar Service Worker:', err));
+      });
+    }
+
+    // --- VARIABLES GLOBALES ---
     let recognition;
     let isPaused = false;
     let phraseCount = 0;
@@ -98,6 +108,7 @@
     const statusTextEl = document.getElementById('status-text');
     const btnPause = document.getElementById('btn-pause');
 
+    // --- RECONOCIMIENTO DE VOZ ---
     function initSpeech() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
@@ -125,6 +136,7 @@
           }
         }
 
+        // Mostrar la frase en tiempo real
         let displayPhrase = (finalText || interimText).trim().toUpperCase();
         
         if (displayPhrase && displayPhrase !== lastDisplayedText) {
@@ -132,6 +144,7 @@
           lastDisplayedText = displayPhrase;
         }
 
+        // Bajar la frase a la lista al detectar la pausa
         if (finalText) {
           let cleanFinal = finalText.trim().toUpperCase();
           if (cleanFinal) {
@@ -143,10 +156,13 @@
       };
 
       recognition.onend = () => {
-        if (!isPaused) recognition.start();
+        if (!isPaused) {
+            try { recognition.start(); } catch (e) {}
+        }
       };
     }
 
+    // --- LÓGICA DE LA INTERFAZ ---
     function addPhraseToList(phrase) {
       if (!phrase) return;
       phraseCount++;

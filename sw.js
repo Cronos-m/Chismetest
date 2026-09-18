@@ -1,31 +1,27 @@
-const CACHE_NAME = 'hermes-v1';
+const CACHE_NAME = 'hermes-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/app.js',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json',
+  './icon.png'
 ];
 
-// Instalación del Service Worker y cacheo de recursos estáticos
+// Instalar el service worker y guardar en caché
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Hermes: Recursos cacheados correctamente');
         return cache.addAll(urlsToCache);
       })
   );
 });
 
-// Interceptación de peticiones de red para servir desde la caché si es posible
+// Interceptar las peticiones para que funcione sin internet
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
+        return response || fetch(event.request);
       })
-    );
+  );
 });
