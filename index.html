@@ -1,77 +1,242 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hermes - Transcriptor de Audio</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#1e1e1e">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #121212;
-            color: #e0e0e0;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        h1 { text-align: center; }
-        .controls {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            border: none;
-            border-radius: 5px;
-            background-color: #bb86fc;
-            color: #121212;
-            font-weight: bold;
-        }
-        button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-        }
-        #transcription {
-            background-color: #1e1e1e;
-            padding: 15px;
-            border-radius: 5px;
-            min-height: 100px;
-            border: 1px solid #333;
-            margin-bottom: 20px;
-            white-space: pre-wrap;
-        }
-        audio {
-            width: 100%;
-            margin-top: 10px;
-        }
-        .status {
-            text-align: center;
-            color: #03dac6;
-            margin-bottom: 15px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#000000">
+  <title>Hermes - Control y Susurro</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background-color: #000; color: #fff; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; overflow: hidden; }
+    
+    /* MENÚ PRINCIPAL */
+    #main-menu { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 360px; padding: 20px; }
+    .app-title { font-size: 2.5rem; font-weight: 800; text-align: center; margin-bottom: 20px; letter-spacing: 2px; }
+    .btn { padding: 18px; border: none; border-radius: 12px; font-size: 1rem; font-weight: bold; cursor: pointer; }
+    .btn-primary { background: #fff; color: #000; }
+    .btn-secondary { background: #1a1a1a; color: #fff; border: 1px solid #333; }
+    
+    /* PANTALLA SUSURRO */
+    #whisper-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; display: none; flex-direction: column; align-items: center; justify-content: center; padding: 20px; z-index: 10; }
+    #whisper-screen.active { display: flex; }
+    
+    /* FRASE EN VIVO */
+    .live-phrase { font-size: 2.5rem; font-weight: 900; color: #fff; text-transform: uppercase; text-align: center; min-height: 90px; letter-spacing: 1px; line-height: 1.1; display: flex; align-items: center; justify-content: center; }
+    .status-indicator { font-size: 1rem; color: #555; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 4px; }
+    
+    /* LISTA DE FRASES */
+    .words-container { margin-top: 20px; width: 100%; max-width: 340px; max-height: 45vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .word-item { font-size: 1.4rem; color: #ccc; border-bottom: 1px solid #222; padding-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; }
+    .word-num { color: #fff; font-weight: 900; min-width: 35px; }
+    .word-text { flex: 1; text-transform: uppercase; line-height: 1.2; }
+    
+    /* CONTROLES FLOTANTES */
+    .controls { position: absolute; bottom: 30px; display: flex; gap: 10px; background: #111; padding: 12px 20px; border-radius: 40px; border: 1px solid #333; }
+    .ctrl-btn { background: none; border: none; color: #fff; font-size: 0.9rem; font-weight: 600; cursor: pointer; padding: 5px 10px; }
+    .ctrl-btn.active-btn { color: #4ade80; }
+    .ctrl-btn.paused-btn { color: #f87171; }
+    
+    /* PANTALLA GUARDADOS */
+    #saved-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; display: none; flex-direction: column; padding: 30px 20px; z-index: 20; }
+    #saved-screen.active { display: flex; }
+    .saved-list { margin-top: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; flex-grow: 1; margin-bottom: 20px; }
+    .saved-card { background: #111; padding: 15px; border-radius: 10px; border: 1px solid #333; }
+    .saved-date { color: #888; font-size: 0.8rem; margin-bottom: 8px; }
+    .saved-phrase-item { color: #ccc; margin-bottom: 4px; text-transform: uppercase; font-size: 1.1rem; }
+  </style>
 </head>
 <body>
-    <h1>Hermes</h1>
-    
-    <p class="status" id="status">Sistema listo. Presiona Iniciar.</p>
+
+  <!-- MENÚ -->
+  <div id="main-menu">
+    <h1 class="app-title">HERMES</h1>
+    <button class="btn btn-primary" onclick="startWhisper()">VER SUSURRO</button>
+    <button class="btn btn-secondary" onclick="showSaved()">LISTAS GUARDADAS</button>
+  </div>
+
+  <!-- SUSURRO -->
+  <div id="whisper-screen">
+    <div class="status-indicator" id="status-text">ESCUCHANDO...</div>
+    <div class="live-phrase" id="live-phrase"></div>
+    <div class="words-container" id="words-list"></div>
     
     <div class="controls">
-        <button id="btnStart">Iniciar Grabación</button>
-        <button id="btnStop" disabled>Detener Grabación</button>
+      <button class="ctrl-btn paused-btn" id="btn-pause" onclick="togglePause()">PAUSAR</button>
+      <button class="ctrl-btn" onclick="saveCurrentList()">GUARDAR</button>
+      <button class="ctrl-btn" onclick="exitWhisper()">SALIR</button>
     </div>
+  </div>
 
-    <h3>Transcripción en tiempo real:</h3>
-    <div id="transcription">El texto transcrito aparecerá aquí...</div>
+  <!-- GUARDADOS -->
+  <div id="saved-screen">
+    <h2 style="font-size: 1.5rem; text-align: center;">HISTORIAL</h2>
+    <div class="saved-list" id="saved-list-container"></div>
+    <button class="btn btn-secondary" onclick="hideSaved()">VOLVER AL MENÚ</button>
+  </div>
 
-    <h3>Reproducción de audio amplificado:</h3>
-    <audio id="audioPlayback" controls></audio>
+  <script>
+    let recognition;
+    let isPaused = false;
+    let phraseCount = 0;
+    let currentSessionPhrases = [];
+    let lastDisplayedText = "";
 
-    <script src="app.js"></script>
+    const livePhraseEl = document.getElementById('live-phrase');
+    const wordsListEl = document.getElementById('words-list');
+    const statusTextEl = document.getElementById('status-text');
+    const btnPause = document.getElementById('btn-pause');
+
+    function initSpeech() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        alert("Tu navegador no soporta reconocimiento de voz.");
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true; 
+      recognition.maxAlternatives = 1;
+      recognition.lang = 'es-ES';
+
+      recognition.onresult = (event) => {
+        if (isPaused) return;
+
+        let interimText = '';
+        let finalText = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalText += event.results[i][0].transcript;
+          } else {
+            interimText += event.results[i][0].transcript;
+          }
+        }
+
+        // Mostrar la frase mientras se va armando (en tiempo real)
+        let displayPhrase = (finalText || interimText).trim().toUpperCase();
+        
+        if (displayPhrase && displayPhrase !== lastDisplayedText) {
+          livePhraseEl.textContent = displayPhrase;
+          lastDisplayedText = displayPhrase;
+        }
+
+        // Cuando el motor detecta la pausa final, lo baja a la lista numerada
+        if (finalText) {
+          let cleanFinal = finalText.trim().toUpperCase();
+          if (cleanFinal) {
+            addPhraseToList(cleanFinal);
+            livePhraseEl.textContent = '';
+            lastDisplayedText = '';
+          }
+        }
+      };
+
+      recognition.onend = () => {
+        if (!isPaused) recognition.start(); // Reconecta automáticamente
+      };
+    }
+
+    function addPhraseToList(phrase) {
+      if (!phrase) return;
+      phraseCount++;
+      currentSessionPhrases.push(phrase);
+      
+      const item = document.createElement('div');
+      item.className = 'word-item';
+      
+      // Estructura clara para asegurar la numeración
+      item.innerHTML = `
+        <span class="word-num">${phraseCount}.</span>
+        <span class="word-text">${phrase}</span>
+      `;
+      
+      wordsListEl.prepend(item); // Se añade arriba para no tener que bajar la pantalla
+    }
+
+    function startWhisper() {
+      document.getElementById('main-menu').style.display = 'none';
+      document.getElementById('whisper-screen').classList.add('active');
+      
+      phraseCount = 0;
+      currentSessionPhrases = [];
+      wordsListEl.innerHTML = '';
+      livePhraseEl.textContent = '';
+      isPaused = false;
+      updatePauseUI();
+
+      if (!recognition) initSpeech();
+      try { recognition.start(); } catch (e) {}
+    }
+
+    function togglePause() {
+      isPaused = !isPaused;
+      updatePauseUI();
+      if (isPaused) {
+        recognition.stop();
+        livePhraseEl.textContent = 'PAUSADO';
+      } else {
+        livePhraseEl.textContent = '';
+        try { recognition.start(); } catch (e) {}
+      }
+    }
+
+    function updatePauseUI() {
+      statusTextEl.textContent = isPaused ? "MICRÓFONO APAGADO" : "ESCUCHANDO...";
+      btnPause.textContent = isPaused ? "REANUDAR" : "PAUSAR";
+      btnPause.className = isPaused ? "ctrl-btn active-btn" : "ctrl-btn paused-btn";
+    }
+
+    function exitWhisper() {
+      isPaused = true;
+      if (recognition) recognition.stop();
+      document.getElementById('whisper-screen').classList.remove('active');
+      document.getElementById('main-menu').style.display = 'flex';
+    }
+
+    function saveCurrentList() {
+      if (currentSessionPhrases.length === 0) {
+        alert("No hay frases para guardar.");
+        return;
+      }
+      
+      const history = JSON.parse(localStorage.getItem('hermes_history') || '[]');
+      history.push({
+        date: new Date().toLocaleString(),
+        phrases: [...currentSessionPhrases]
+      });
+      
+      localStorage.setItem('hermes_history', JSON.stringify(history));
+      alert("Lista guardada exitosamente.");
+    }
+
+    function showSaved() {
+      const history = JSON.parse(localStorage.getItem('hermes_history') || '[]');
+      const container = document.getElementById('saved-list-container');
+      container.innerHTML = '';
+
+      if (history.length === 0) {
+        container.innerHTML = '<div class="saved-card" style="text-align:center;">No hay listas guardadas</div>';
+      } else {
+        history.slice().reverse().forEach(session => {
+          const card = document.createElement('div');
+          card.className = 'saved-card';
+          
+          let phrasesHTML = session.phrases.map((p, i) => `<div class="saved-phrase-item">${i + 1}. ${p}</div>`).join('');
+          card.innerHTML = `<div class="saved-date">${session.date}</div><div>${phrasesHTML}</div>`;
+          
+          container.appendChild(card);
+        });
+      }
+
+      document.getElementById('main-menu').style.display = 'none';
+      document.getElementById('saved-screen').classList.add('active');
+    }
+
+    function hideSaved() {
+      document.getElementById('saved-screen').classList.remove('active');
+      document.getElementById('main-menu').style.display = 'flex';
+    }
+  </script>
 </body>
 </html>
